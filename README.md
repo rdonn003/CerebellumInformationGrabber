@@ -1,4 +1,5 @@
 # Cerebellar Layer Quantification Plugin
+# VIBE CODED
 
 A FIJI/ImageJ plugin for quantitative morphometric analysis of Nissl-stained cerebellar
 histology sections. All measurements are derived from user-drawn ROI geometry — no pixel
