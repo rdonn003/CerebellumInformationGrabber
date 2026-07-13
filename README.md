@@ -156,9 +156,11 @@ in px² and lengths in px.
 
 Open the ROI Manager (*Analyze → Tools → ROI Manager*) and draw four fixed ROIs (the
 whole-cerebellum outline, Granular+WM, White Matter, and the Purkinje line) plus one
-fissure line per split you need. Matching is **case-insensitive**. Both full names and
-common lab abbreviations are accepted — use whichever your lab already uses. The order
-ROIs are added does not matter.
+fissure line per split you need. (White Matter and fissures can both be skipped for a
+second or later traced piece — see *Multiple instances* below.) Matching is
+**case-insensitive**. Both full names and common lab abbreviations are accepted — use
+whichever your lab already
+uses. The order ROIs are added does not matter.
 
 | ROI | Type in FIJI | Accepted names (any case, examples) |
 |---|---|---|
@@ -168,15 +170,108 @@ ROIs are added does not matter.
 | Purkinje cell line | Open polyline | `Purkinje`, `purkinje`, **`PL`**, `pl` |
 | Fissure 1, 2, 3, … | Open polyline | `Fissure1`, `fissure1`, **`FL1`**, `FL_1`, `FL-1`, `fl1`; `Fissure2`/`FL2`; and so on |
 
-**How many fissures?** *N* fissures split the cerebellum into *N+1* subsections. **7
-fissures → 8 subsections is the standard scheme** for a midline sagittal section of
-rodent vermis, and gets the familiar anatomical labels (2Cb, 3Cb, 4/5Cb, 6Cb, 7Cb, 8Cb,
-9Cb, 10Cb). That specific scheme doesn't apply to every section, though — off-midline
-sagittal cuts, coronal or horizontal sections, damaged tissue, and other species can all
-have a different number of visible lobules. Trace however many fissures the section
-actually shows (at least one); anything other than 7 gets generic labels instead
-("Section 1", "Section 2", …) since a specific anatomical name would be a guess. Name
-extra fissures the same way (`FL8`, `FL9`, `fissure8`, …) — there's no upper limit.
+**How many fissures?** Trace however many the section actually shows (at least one). Name
+extras the same way (`FL8`, `FL9`, `fissure8`, …) — there's no upper limit.
+
+How many *sections* that produces depends on the shape of the layers, and the plugin
+works it out for you (it says which in the log):
+
+- **Normally, *N* fissures give *N* sections.** Each cerebellar layer wraps all the way
+  around the white matter core, so it's a **ring**. Cutting a ring once doesn't separate
+  anything — it just opens the ring into a strip; it takes *N* cuts to get *N* pieces.
+  The practical consequence is that the two end lobules stay joined as one section.
+- **If you pinch the ring open at the peduncle** (see *Closing the loop* below), the layer
+  becomes a strip instead, and then *N* fissures give ***N+1*** sections — the two end
+  lobules separate. This is what you want for the standard scheme.
+
+**7 fissures + the peduncle pinch → 8 sections** is the standard scheme for a midline
+sagittal section of rodent vermis, and gets the familiar anatomical labels (2Cb, 3Cb,
+4/5Cb, 6Cb, 7Cb, 8Cb, 9Cb, 10Cb). That scheme doesn't apply to every section, though —
+off-midline cuts, coronal or horizontal sections, damaged tissue, and other species can
+all have a different number of visible lobules. Any section count other than 8 gets
+generic labels instead ("Section 1", "Section 2", …), since a specific anatomical name
+would be a guess.
+
+#### Multiple instances (separately-traced sections)
+
+Sometimes the tissue itself isn't one traceable outline — a piece may have broken off
+during sectioning, or the cut may capture disconnected islands of cerebellar tissue. In
+a case like that, the best approach is to trace each piece separately rather than force
+one Cerebellum/Granular+WM hierarchy over tissue that doesn't geometrically connect: for
+example, trace the two lower sections apart from the top one, each as its own set of
+ROIs.
+
+These pieces are still **one cerebellum**, just one that couldn't be outlined as a single
+connected shape — so they're pooled back together into a **single set of results**, not
+reported as separate specimens:
+
+- **Whole-cerebellum totals are summed** across every piece. One Cerebellum area, one
+  Grey Matter area, one Purkinje length, and so on, covering all the pieces together.
+- **Sections are pooled into one list.** A piece split by fissures contributes each of
+  its own subsections; a piece traced *without* fissures contributes exactly one
+  subsection — itself — because it's anatomically just one more section of the same
+  cerebellum, one that happened to need its own outline. In other words, the secondary
+  selections are **additional sections** alongside the fissure-derived ones.
+- **Labels are assigned across the pooled list.** If the pooled sections come to 8, they
+  get the standard anatomical names (2Cb … 10Cb) regardless of how they were spread
+  across pieces; any other count gets generic "Section N" names. Sections are ordered by
+  piece number first, then by arc order within each piece — so **number the pieces in
+  anatomical order** (1, 2, 3, …) to get the labels lined up correctly.
+
+An instance is identified by a leading number on every ROI name belonging to it. ROI
+names with **no** leading number belong to instance 1 — so a normal, single-section
+workflow needs no changes at all. To add a second instance, prefix every one of its ROI
+names with `2`:
+
+```
+CB          →  instance 1 Cerebellum (unprefixed = instance 1, as always)
+GL+WM       →  instance 1 Granular+WM
+WM          →  instance 1 White Matter
+PL          →  instance 1 Purkinje
+FL1 … FL7   →  instance 1 fissures
+
+2CB         →  instance 2 Cerebellum
+2GL+WM      →  instance 2 Granular+WM
+2WM         →  instance 2 White Matter
+2PL         →  instance 2 Purkinje
+2FL1 … 2FL4 →  instance 2 fissures (its own fissure count, independent of instance 1's)
+```
+
+A third instance uses `3` the same way (`3CB`, `3GL+WM`, …), and so on — there's no
+upper limit. Each instance needs all four required ROIs plus at least one fissure under
+its own number; instances don't need to have the same fissure count as each other; a
+6- or 7-fissure instance gets the standard anatomical labels, and any other count gets
+generic ones, exactly as described above, independently per instance.
+
+> **Naming caution:** because a leading number is now meaningful, avoid bare names like
+> "2Cb" or "10Cb" for anything *other* than this feature — they now mean "the Cerebellum
+> ROI for instance 2/10" rather than being ignored. This doesn't affect ROIs the plugin
+> itself adds (e.g. `2Cb_Granular` from the ROI Manager export option below), since those
+> always carry a suffix this parser doesn't match.
+
+**White Matter and fissures are both optional for secondary instances.** Instance 1
+always needs both, same as ever. A secondary instance (2, 3, …) needs neither —
+independently of each other:
+
+- **No fissures traced** for a secondary instance? It just isn't split into
+  subsections; its whole-cerebellum totals are still measured normally. Useful when a
+  second traced piece only matters for its overall extent, not lobule-level detail.
+- **No White Matter traced** for a secondary instance? Same (no subsections), and that
+  instance's Grey Matter and Granular Layer numbers won't have White Matter excluded
+  from them either, since there's nothing to subtract it from — Grey Matter reports as
+  the Cerebellum area, and Granular Layer as the Granular+WM area, unmodified. If
+  fissures were traced anyway, they're ignored (with a log note) rather than
+  partitioned: without White Matter there's no inner boundary for granular-layer cuts
+  to separate against, so attempting it would just merge subsections back together
+  rather than failing loudly.
+- **Both traced** for a secondary instance? Full normal behaviour — layer breakdown and
+  partitioning happen exactly as they would for instance 1.
+
+
+When more than one piece is detected, the overlay item names and ROI-Manager-export names
+get an `[N]` prefix per piece so they stay distinguishable on the image. The results table
+(and CSV/XLSX) stay a **single combined table** either way — there's no per-piece column,
+because the pieces are one cerebellum, not separate specimens.
 
 > **Disambiguation note:** `GL+WM` is always matched as Granular+WM, never as White Matter,
 > even though it contains the letters "WM". The plugin evaluates Granular+WM before
@@ -310,6 +405,10 @@ ones simply won't appear rather than adding an empty or wrong ROI. Each added RO
 independent copy, so renaming, deleting, or re-measuring it in the ROI Manager has no
 effect on the plugin's own results.
 
+With more than one instance (see *Multiple instances* above), every name additionally
+gets an `[N]` prefix — e.g. `[2] 2Cb_Granular` — so names stay distinguishable across
+instances instead of colliding. A single-instance run adds no prefix.
+
 ---
 
 ## Output table
@@ -334,6 +433,10 @@ Length       |            |             |                |                 | tot
 Column headers include the calibrated unit, e.g. `Granular Layer (µm²)` and `Purkinje (µm)`.
 Empty cells carry no measurement for that row/column combination.
 All numeric values are rounded to 4 decimal places.
+
+This is always **one table**, even when the cerebellum was traced as several separate
+pieces (see *Multiple instances* above) — the pieces' totals are summed into the Area and
+Length rows, and their sections pooled into the subsection rows below.
 
 **About the Purkinje column's Area row:** a line doesn't really have an area, so this
 isn't a biologically meaningful quantity — it's included because it's exactly what
@@ -369,17 +472,18 @@ The overlay is non-destructive vector graphics. To remove it:
 ```
 org.cerebellum.morphometry
 │
-├── CerebellarMorphometryPlugin   FIJI entry point, options dialog, pipeline controller
+├── CerebellarMorphometryPlugin   FIJI entry point, options dialog, per-instance pipeline loop
 │
 ├── model/
-│   ├── LayerSet                  Validated, typed input ROI bundle
+│   ├── LayerSet                  Validated, typed input ROI bundle (one per instance)
 │   ├── ConstructedLayers         Three Boolean-derived whole-cerebellum layer shapes
-│   ├── PartitionSet              Eight lobule regions with Purkinje arc-length bounds
-│   ├── MorphometryResults        Final numeric output (areas, lengths, per-subsection)
+│   ├── PartitionSet              Lobule regions with Purkinje arc-length bounds
+│   ├── MorphometryResults        Final numeric output for one instance
+│   ├── InstanceResult            Pairs an instance number with its MorphometryResults
 │   └── ValidationException       Aggregates all ROI problems into one error dialog
 │
 ├── geometry/
-│   ├── ROIValidator              Name / type / nesting checks  →  LayerSet
+│   ├── ROIValidator              Name / type / nesting / instance-grouping checks  →  LayerSet per instance
 │   ├── BooleanROIProcessor       Defensive-copy ShapeRoi AND / OR / NOT + area measurement
 │   ├── GeometryUtils             Vector math, arc-length, polyline projection, interpolation
 │   ├── LayerConstructor          The three Boolean subtractions (Grey, Granular, Molecular)
@@ -389,13 +493,13 @@ org.cerebellum.morphometry
 │   └── PurkinjeLengthCalculator  Calibrated arc-length, total and per-subsection
 │
 ├── measurement/
-│   └── MeasurementEngine         Orchestrates the full pipeline  →  MorphometryResults
+│   └── MeasurementEngine         Orchestrates the full pipeline for one instance  →  MorphometryResults
 │
 ├── export/
-│   └── SpreadsheetExporter       ImageJ ResultsTable + CSV + XLSX
+│   └── SpreadsheetExporter       ImageJ ResultsTable + CSV + XLSX, combining all instances
 │
 └── visualization/
-    ├── OverlayRenderer           Colour-coded vector overlay
+    ├── OverlayRenderer           Colour-coded vector overlay, combined across instances
     └── RoiManagerExporter        One named ROI per measurement, added to the ROI Manager
 ```
 
@@ -423,11 +527,14 @@ the single connected ring the anatomy actually has.
 
 1. Each fissure is traced across the **full tissue depth** — pial surface to White
    Matter — rather than stopping at the Purkinje line (see the tracing tip above for
-   why). The plugin samples finely along each fissure's own path to find where it comes
-   closest to the Purkinje polyline; that crossing point's arc-length position sorts the
-   fissures into anatomical order (2Cb → 10Cb for the standard 7-fissure scheme), and
-   its position along the fissure's own path splits it into a molecular portion (pial
-   end → crossing) and a granular portion (crossing → White Matter end).
+   why). The plugin then splits each fissure into a molecular portion and a granular
+   portion **at the layer boundaries the fissure actually crosses**: the molecular
+   portion runs from the pial surface to where the fissure enters Granular+WM, and the
+   granular portion from there to where it enters White Matter. Note this uses each
+   layer's *own* outline, not the Purkinje line — a cut can only sever a layer if it
+   spans that layer's full width, and the Purkinje line is a separately hand-traced curve
+   that generally doesn't sit exactly on the Granular+WM boundary. The Purkinje line is
+   still used, but only to *order* the fissures along the cerebellum.
 
 2. The **Molecular layer** (`Cerebellum` minus `Granular+WM`) is split using each
    fissure's molecular portion, extended a small distance past its two ends to absorb
@@ -438,14 +545,18 @@ the single connected ring the anatomy actually has.
    using each fissure's granular portion (crossing → White Matter end).
 
 4. For each layer, the fissure portions are thickened into thin strips and subtracted
-   from that layer's rasterized mask; connected-component labeling then finds the N+1
-   disjoint pieces (N = fissure count), which are sorted back into anatomical order
-   (2Cb → 10Cb for the standard 7-fissure scheme) by projecting each piece's centroid
-   onto the Purkinje arc. A subsection's final region is the union of its Molecular
-   piece and its Granular piece.
+   from that layer's rasterized mask; connected-component labeling then finds the
+   resulting disjoint pieces. How many to expect is determined from the mask itself —
+   a **ring** (a layer with a hole in it, the normal case) yields *N* pieces from *N*
+   cuts, while an open **strip** (a ring pinched open at the peduncle) yields *N+1*.
+   Pieces are ordered by projecting each one's centroid onto the Purkinje line, and a
+   section's final region is the union of its Molecular piece and its Granular piece.
 
-5. Each region's Purkinje length is the calibrated arc-length between its two bounding
-   fissure attachment points — no separate polyline clipping is needed.
+5. Each section's Purkinje length is measured by asking which parts of the Purkinje line
+   fall inside that section's region — not by arc-range arithmetic. On a ring, one
+   section wraps past the end of the Purkinje line and resumes at its start, owning two
+   disjoint stretches of it; measuring by containment handles that automatically.
+
 
 If a section is traced unusually finely, the strip width automatically retries a couple
 of wider fallback values. A message is written to the FIJI log (`Window → Log`) naming
@@ -474,13 +585,14 @@ numerical artifact, so it's worth checking that layer's fissures specifically.
 | *"The ROI Manager is empty"* | Add all required ROIs before running the plugin |
 | *"Missing the Cerebellum ROI"* | Name the closed polygon `Cerebellum`, `CB`, or anything containing "cerebellum" |
 | *"Missing the Granular+WM ROI"* | Name the closed polygon `GL+WM`, `GLWM`, `Granular+WM`, or anything containing "granular" |
-| *"Missing the White Matter ROI"* | Name the closed polygon `WM` or anything containing "white". Note: `GL+WM` is correctly identified as Granular+WM, not White Matter — add a separate `WM` ROI |
-| *"No fissure ROIs found"* | Add at least one fissure polyline named `FL1`, `fissure1`, or similar |
+| *"Missing the White Matter ROI"* | Name the closed polygon `WM` or anything containing "white". Note: `GL+WM` is correctly identified as Granular+WM, not White Matter — add a separate `WM` ROI. Only required for instance 1 — a secondary instance (`2CB`, `3CB`, …) can omit it, see *Multiple instances* |
+| *"No fissure ROIs found"* | Add at least one fissure polyline named `FL1`, `fissure1`, or similar. Only required for instance 1 — a secondary instance (`2CB`, `3CB`, …) can omit it, see *Multiple instances* |
 | Subsections are labeled "Section 1", "Section 2", … instead of anatomical names | Expected whenever the fissure count isn't 7 — the anatomical names (2Cb, 3Cb, …) only apply to the standard scheme. Not an error |
 | *"Missing the Purkinje ROI"* | Name the open polyline `PL`, `Purkinje`, or anything containing "purkinje" |
 | *"The Purkinje ROI is a closed area"* | Re-trace as an open polyline using the *Segmented Line* tool |
-| *"More than one ROI matches Cerebellum"* | Two ROI names both match the Cerebellum rules — rename or remove one |
-| *"WhiteMatter is not fully inside Granular+WM"* | Redraw the outlines so that WM is contained within GL+WM |
+| *"More than one ROI matches Cerebellum"* | Two ROI names both match the Cerebellum rules for the *same* instance — rename or remove one, or add the correct instance-number prefix (see *Multiple instances*) if they actually belong to different instances |
+| *"[Instance N] Missing the ..."* | An instance-prefixed name (e.g. `2CB`) was found, but that instance is missing one of its other required ROIs — add it with the same `N` prefix, or remove the stray prefixed ROI if you didn't mean to create a second instance |
+| FIJI log shows *"~X% of the ... falls outside ..."* | Informational, not an error — see *Closing the loop* above. Only worth double-checking if the percentage is much larger than expected for a deliberate peduncle extension |
 
 ### Measurement looks wrong
 
